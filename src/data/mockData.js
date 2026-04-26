@@ -1,11 +1,11 @@
 export const categories = [
   "Todos",
-  "Desarrollo Frontend",
-  "Desarrollo Backend",
-  "Infraestructura (DevOps)",
-  "Bases de Datos",
-  "Documentación Técnica",
-  "Arquitectura de Software",
+  "Documentos",
+  "Informes",
+  "Presentaciones",
+  "Formularios",
+  "Recursos Visuales",
+  "Datos y Análisis",
   "Otros"
 ];
 

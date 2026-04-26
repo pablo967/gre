@@ -48,7 +48,7 @@ function App() {
 
   // Form state
   const [formData, setFormData] = useState({
-    title: '', description: '', category: 'Documentación Técnica', type: 'pdf', url: '', fileContent: ''
+    title: '', description: '', category: 'Documentos', type: 'pdf', url: '', fileContent: ''
   });
 
   useEffect(() => { fetchResources(); }, []);
@@ -106,7 +106,7 @@ function App() {
         const cleaned = (data || []).map((row) => {
           const hitTitle = row.title && normalizeStr(row.title).includes(norm);
           const hitDesc = row.description && normalizeStr(row.description).includes(norm);
-          
+
           if (hitTitle) newTitleMatchIds.add(row.id);
           if (hitDesc) newDescMatchIds.add(row.id);
 
@@ -144,17 +144,17 @@ function App() {
 
   const extractSnippets = (text, normTerm, maxSnippets = 3, contextChars = 120) => {
     if (!text || !normTerm) return [];
-    
+
     // Formatear el texto de forma más limpia para la vista previa
     let friendlyText = text
-        .replace(/\[---\s*Archivo:\s*(.*?)\s*---\]/g, ' [📄 $1] ')
-        .replace(/#\s*Contenido:\s*(.*?)(?=\n|$)/g, ' [📄 $1] ')
-        .replace(/\s+/g, ' '); // unificar espacios
-        
+      .replace(/\[---\s*Archivo:\s*(.*?)\s*---\]/g, ' [📄 $1] ')
+      .replace(/#\s*Contenido:\s*(.*?)(?=\n|$)/g, ' [📄 $1] ')
+      .replace(/\s+/g, ' '); // unificar espacios
+
     const normText = normalizeStr(friendlyText);
     const snippets = [];
     let searchFrom = 0;
-    
+
     while (snippets.length < maxSnippets) {
       const idx = normText.indexOf(normTerm, searchFrom);
       if (idx === -1) break;
@@ -162,11 +162,11 @@ function App() {
       const end = Math.min(friendlyText.length, idx + normTerm.length + contextChars);
       const prefix = start > 0 ? '…' : '';
       const suffix = end < friendlyText.length ? '…' : '';
-      
+
       let rawSnippet = friendlyText.slice(start, end).trim();
       // Eliminar etiquetas cortadas a la mitad en los bordes por el recorte de caracteres
       rawSnippet = rawSnippet.replace(/^[^\[]*\]/, '').replace(/\[[^\]]*$/, '').trim();
-      
+
       snippets.push(prefix + rawSnippet + suffix);
       searchFrom = idx + normTerm.length;
     }
@@ -257,14 +257,14 @@ function App() {
             else if (fn.endsWith('.docx') || fn.endsWith('.doc')) extracted = await extractWordText(f);
             else if (fn.endsWith('.xlsx') || fn.endsWith('.xls') || fn.endsWith('.csv')) extracted = await extractExcelText(f);
             else if (fn.endsWith('.txt') || fn.endsWith('.md') || fn.endsWith('.js') || fn.endsWith('.json')) extracted = await f.text();
-            
+
             if (extracted.trim()) {
               folderText += `\n[--- Archivo: ${f.webkitRelativePath || f.name} ---]\n${extracted} `;
             }
           } catch (e) { console.warn("Could not extract folder file:", fn); }
         }
 
-        setFormData(prev => ({ ...prev, title: newTitle, type: 'folder', category: 'Otros', fileContent: folderText }));
+        setFormData(prev => ({ ...prev, title: newTitle, type: 'folder', category: 'Documentos', fileContent: folderText }));
         setIsFileReading(false);
       } else {
         let mainFile = files[0];
@@ -282,12 +282,12 @@ function App() {
         let extractedText = '';
 
         try {
-          if (fileName.endsWith('.pdf')) { newType = 'pdf'; newCategory = 'Documentación Técnica'; extractedText = await extractPdfText(mainFile); }
-          else if (fileName.endsWith('.docx') || fileName.endsWith('.doc') || mimeType.includes('word')) { newType = 'doc'; extractedText = await extractWordText(mainFile); }
-          else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv') || mimeType.includes('excel') || mimeType.includes('sheet')) { newType = 'sheet'; newCategory = 'Bases de Datos'; extractedText = await extractExcelText(mainFile); }
-          else if (fileName.endsWith('.pptx') || fileName.endsWith('.ppt') || mimeType.includes('presentation')) { newType = 'ppt'; }
-          else if (mimeType.includes('image')) { newType = 'link'; }
-          else if (mimeType.includes('text') || fileName.endsWith('.json') || fileName.endsWith('.js') || fileName.endsWith('.md')) { newType = 'doc'; newCategory = 'Desarrollo Frontend'; extractedText = await mainFile.text(); }
+          if (fileName.endsWith('.pdf')) { newType = 'pdf'; newCategory = 'Documentos'; extractedText = await extractPdfText(mainFile); }
+          else if (fileName.endsWith('.docx') || fileName.endsWith('.doc') || mimeType.includes('word')) { newType = 'doc'; newCategory = 'Documentos'; extractedText = await extractWordText(mainFile); }
+          else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv') || mimeType.includes('excel') || mimeType.includes('sheet')) { newType = 'sheet'; newCategory = 'Datos y Análisis'; extractedText = await extractExcelText(mainFile); }
+          else if (fileName.endsWith('.pptx') || fileName.endsWith('.ppt') || mimeType.includes('presentation')) { newType = 'ppt'; newCategory = 'Presentaciones'; }
+          else if (mimeType.includes('image')) { newType = 'link'; newCategory = 'Recursos Visuales'; }
+          else if (mimeType.includes('text') || fileName.endsWith('.json') || fileName.endsWith('.js') || fileName.endsWith('.md')) { newType = 'doc'; newCategory = 'Documentos'; extractedText = await mainFile.text(); }
         } catch (e) {
           console.error("Error al extraer texto:", e);
         }
@@ -431,7 +431,7 @@ function App() {
 
   const closeModal = () => {
     setIsModalOpen(false); setEditingId(null);
-    setFormData({ title: '', description: '', category: 'Documentación Técnica', type: 'pdf', url: '', fileContent: '' });
+    setFormData({ title: '', description: '', category: 'Documentos', type: 'pdf', url: '', fileContent: '' });
     setSelectedFile(null); setIsFileReading(false); setUploadProgress('');
   };
 
@@ -442,7 +442,7 @@ function App() {
       <div className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12">
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-10">
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 mb-2">OmniDirectorio</h1>
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 mb-2">Resource Hub</h1>
             <p className="text-gray-500 text-lg">Repositorio Corporativo de Documentos</p>
           </div>
           <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
@@ -622,7 +622,7 @@ function App() {
                   try {
                     const data = JSON.parse(folderViewResource.url.replace('folder:', ''));
                     if (!data.files || data.files.length === 0) return <p className="text-slate-500 italic pb-5">La carpeta está vacía.</p>;
-                    
+
                     const folderContent = folderViewResource.file_content || '';
                     const normTerm = normalizeStr(searchTerm.trim());
 
@@ -648,7 +648,7 @@ function App() {
                     return data.files.map((f, i) => {
                       const isNameMatch = normTerm && normalizeStr(f.path).includes(normTerm);
                       const isContentMatch = normTerm && checkContentMatch(f.path);
-                      
+
                       return (
                         <li key={i} className={`bg-white border ${isNameMatch || isContentMatch ? 'border-blue-400 bg-blue-50/40 shadow-blue-100/50' : 'border-slate-200'} rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-blue-300 transition`}>
                           <span className="font-medium text-slate-700 break-all text-sm flex items-center flex-wrap gap-2">
