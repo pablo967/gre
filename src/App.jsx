@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Layout from './components/Layout';
 import { categories } from './data/mockData';
 import { supabase } from './supabaseClient';
+import { useAuth } from './context/AuthContext';
+import AuthPage from './components/auth/AuthPage';
 import * as pdfjsLib from 'pdfjs-dist';
 import * as mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
@@ -19,6 +21,28 @@ const iconColors = {
 };
 
 function App() {
+  const { session, profile, organization, profileLoading } = useAuth();
+
+  if (session === undefined || profileLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-gray-400 animate-pulse text-sm font-medium">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (!session || !profile) return <AuthPage />;
+
+  return <AppMain organization={organization} />;
+}
+
+function AppMain({ organization }) {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
+  const canUpload = isAdmin || profile?.can_upload;
+  const canEdit   = isAdmin || profile?.can_edit;
+  const canDelete = isAdmin || profile?.can_delete;
+
   const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -337,7 +361,8 @@ function App() {
       }
 
       const resourcePayload = {
-        title: formData.title, description: formData.description || '', category: formData.category, type: formData.type, url: finalUrl, file_content: formData.fileContent
+        title: formData.title, description: formData.description || '', category: formData.category, type: formData.type, url: finalUrl, file_content: formData.fileContent,
+        organization_id: organization.id,
       };
 
       if (editingId) {
@@ -445,9 +470,11 @@ function App() {
             <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 mb-2">Resource Hub</h1>
             <p className="text-gray-500 text-lg">Repositorio Corporativo de Documentos</p>
           </div>
-          <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-            <span className="text-xl leading-none">+</span> Añadir Recurso
-          </button>
+          {canUpload && (
+            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+              <span className="text-xl leading-none">+</span> Añadir Recurso
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col xl:flex-row gap-6 mb-10 items-start xl:items-center justify-between">
@@ -519,24 +546,30 @@ function App() {
                   </div>
                 )}
 
-                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button className="icon-btn" onClick={() => { setConfirmDeleteId(null); handleEdit(resource); }} title="Editar">✏️</button>
-                  {confirmDeleteId === resource.id ? (
-                    <>
-                      <button
-                        className="text-[10px] font-bold px-2 py-1 rounded-sm bg-red-600 text-white hover:bg-red-700 transition"
-                        onClick={() => handleDelete(resource.id)}
-                        title="Confirmar eliminación"
-                      >¿Eliminar?</button>
-                      <button
-                        className="text-[10px] font-bold px-2 py-1 rounded-sm bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
-                        onClick={cancelDelete}
-                      >No</button>
-                    </>
-                  ) : (
-                    <button className="icon-btn hover:border-red-600 hover:text-red-600" onClick={() => handleDelete(resource.id)} title="Eliminar">🗑️</button>
-                  )}
-                </div>
+                {(canEdit || canDelete) && (
+                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    {canEdit && (
+                      <button className="icon-btn" onClick={() => { setConfirmDeleteId(null); handleEdit(resource); }} title="Editar">✏️</button>
+                    )}
+                    {canDelete && (
+                      confirmDeleteId === resource.id ? (
+                        <>
+                          <button
+                            className="text-[10px] font-bold px-2 py-1 rounded-sm bg-red-600 text-white hover:bg-red-700 transition"
+                            onClick={() => handleDelete(resource.id)}
+                            title="Confirmar eliminación"
+                          >¿Eliminar?</button>
+                          <button
+                            className="text-[10px] font-bold px-2 py-1 rounded-sm bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+                            onClick={cancelDelete}
+                          >No</button>
+                        </>
+                      ) : (
+                        <button className="icon-btn hover:border-red-600 hover:text-red-600" onClick={() => handleDelete(resource.id)} title="Eliminar">🗑️</button>
+                      )
+                    )}
+                  </div>
+                )}
 
                 <div className={`w-12 h-12 rounded-sm flex items-center justify-center text-2xl shadow-sm ${(searchTerm.trim() && (contentMatchIds.has(resource.id) || titleMatchIds.has(resource.id) || descMatchIds.has(resource.id))) ? 'mt-6' : ''} mb-5 ${iconColors[resource.type] || iconColors.doc}`}>
                   {resource.type === 'pdf' ? '📄' :
