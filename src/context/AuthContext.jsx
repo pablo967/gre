@@ -47,6 +47,8 @@ export function AuthProvider({ children }) {
     if (data) {
       setProfile(data);
       setOrganization(data.organizations);
+      // Registrar último acceso en segundo plano
+      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', userId);
     } else {
       setProfile(null);
       setOrganization(null);
