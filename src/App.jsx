@@ -11,6 +11,26 @@ import JSZip from 'jszip';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
+const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+
+function getFileExtension(url) {
+  try {
+    const path = new URL(url).pathname;
+    const ext = path.split('.').pop().toLowerCase().split('?')[0];
+    return ext.length <= 5 ? ext : null;
+  } catch {
+    return null;
+  }
+}
+
+function getPreviewSrc(url) {
+  const ext = getFileExtension(url);
+  if (ext && OFFICE_EXTENSIONS.has(ext)) {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 const iconColors = {
   pdf: 'bg-red-50 text-red-700 border border-red-100',
   link: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
@@ -40,7 +60,7 @@ function AppMain({ organization }) {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const canUpload = isAdmin || profile?.can_upload;
-  const canEdit   = isAdmin || profile?.can_edit;
+  const canEdit = isAdmin || profile?.can_edit;
   const canDelete = isAdmin || profile?.can_delete;
 
   const [resources, setResources] = useState([]);
@@ -416,11 +436,13 @@ function AppMain({ organization }) {
 
     if (resource.type === 'folder') { setFolderViewResource(resource); return; }
 
-    const isPDF = resource.url.includes('.pdf') || resource.type === 'pdf';
-    const isImageOrMedia = resource.url.match(/\.(jpeg|jpg|gif|png|webp|webp\/|mp4)$/i) != null;
-    const isWebLink = resource.url.startsWith('https://');
+    const ext = getFileExtension(resource.url);
+    const isOffice = ext && OFFICE_EXTENSIONS.has(ext);
+    const isPDF = ext === 'pdf' || resource.type === 'pdf';
+    const isImageOrMedia = resource.url.match(/\.(jpeg|jpg|gif|png|webp|mp4)$/i) != null;
+    const isWebLink = resource.url.startsWith('https://') && !resource.url.includes('supabase');
 
-    if (isPDF || isImageOrMedia || isWebLink) setPreviewResource(resource);
+    if (isPDF || isImageOrMedia || isWebLink || isOffice) setPreviewResource(resource);
     else window.open(resource.url, '_blank');
   };
 
@@ -430,7 +452,7 @@ function AppMain({ organization }) {
       const blob = await resp.blob();
       const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a'); link.style.display = 'none'; link.href = objectUrl;
-      const urlParts = url.split('.'); const extension = urlParts.length > 1 ? `.${urlParts.pop()}` : '';
+      const extMatch = url.split('?')[0].match(/\.([a-z0-9]{1,5})$/i); const extension = extMatch ? `.${extMatch[1]}` : '';
       link.download = `${customTitle}${extension}`;
       document.body.appendChild(link); link.click(); document.body.removeChild(link); window.URL.revokeObjectURL(objectUrl);
     } catch (e) { window.open(url, '_blank'); }
@@ -633,7 +655,7 @@ function AppMain({ organization }) {
             </div>
             <div className="flex-1 bg-slate-200 relative">
               {previewResource.url && previewResource.url !== '#' ? (
-                <iframe src={previewResource.url} title={previewResource.title} className="w-full h-full border-none"></iframe>
+                <iframe src={getPreviewSrc(previewResource.url)} title={previewResource.title} className="w-full h-full border-none"></iframe>
               ) : (
                 <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-medium text-slate-500">Mala referencia URL</p>
               )}
